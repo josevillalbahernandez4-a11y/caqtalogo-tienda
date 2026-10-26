@@ -35,6 +35,8 @@
   .chips::-webkit-scrollbar { display:none; }
   .chip { flex:none; min-height:36px; padding:0 14px; border:0; border-radius:999px; background:var(--tile); font-weight:600; font-size:14px; cursor:pointer; }
   .chip.on { background:var(--ink); color:#fff; }
+  .chip.sf { background:var(--tag); }
+  .chip.sf.on { background:var(--ink); color:var(--tag); }
   body.rep .bar { display:none; }
   #cuenta { margin:8px 0; color:var(--muted); font-size:14px; }
   #cuenta:empty { display:none; }
@@ -328,7 +330,7 @@
   'use strict';
   var $ = function (s) { return document.querySelector(s); };
   var items = [], cargado = false, necesitaClave = false, necesitaRep = false, claveRep = '', actual = null, ocupado = false;
-  var modo = 'cat', carrito = {}, filtroInv = 'todos';
+  var modo = 'cat', carrito = {}, filtroInv = 'todos', soloSinFoto = false;
   var foto = { accion: 'mantener', datos: '', url: '' };
   var timer = 0;
 
@@ -402,19 +404,32 @@
   }
 
   var chipsClave = '';
+  function sinFoto() { return items.filter(function (p) { return !p.foto; }); }
   function pintarChips(cats) {
     cats = cats || categorias();
-    var cur = $('#categoria').value, caja = $('#chips'), k = cats.join('|');
+    var cur = $('#categoria').value, caja = $('#chips'), nsf = sinFoto().length, k = cats.join('|') + '#' + nsf;
     if (k !== chipsClave) {
       chipsClave = k;
       caja.innerHTML = ['Todo'].concat(cats).map(function (c, i) {
         return '<button type="button" class="chip" data-c="' + (i ? esc(c) : '') + '">' + esc(c) + '</button>';
-      }).join('');
+      }).join('') + (nsf ? '<button type="button" class="chip sf" data-sf="1">Sin foto (' + nsf + ')</button>' : '');
     }
     Array.prototype.forEach.call(caja.querySelectorAll('.chip'), function (b) {
-      b.classList.toggle('on', b.getAttribute('data-c') === cur);
+      if (b.hasAttribute('data-sf')) b.classList.toggle('on', soloSinFoto);
+      else b.classList.toggle('on', b.getAttribute('data-c') === cur && (cur !== '' || !soloSinFoto));
     });
-    caja.hidden = !cats.length;
+    caja.hidden = !cats.length && !nsf;
+  }
+
+  // Productos que se muestran ahora (según búsqueda, categoría y filtros).
+  function filtrados() {
+    var q = norm($('#buscar').value).split(/\s+/).filter(Boolean), cat = $('#categoria').value;
+    return items.filter(function (p) {
+      var h = norm(p.nombre + ' ' + p.codigo + ' ' + p.categoria);
+      if (modo === 'inv' && filtroInv !== 'todos' && estado(p) !== filtroInv) return false;
+      if (modo === 'cat' && soloSinFoto && p.foto) return false;
+      return (!cat || p.categoria === cat) && q.every(function (t) { return h.indexOf(t) >= 0; });
+    }).sort(function (a, b) { return a.nombre.localeCompare(b.nombre, 'es'); });
   }
 
   function pintarFiltros() {
@@ -433,12 +448,7 @@
   function pintar() {
     pintarBarra();
     pintarFiltros();
-    var q = norm($('#buscar').value).split(/\s+/).filter(Boolean), cat = $('#categoria').value;
-    var lista = items.filter(function (p) {
-      var h = norm(p.nombre + ' ' + p.codigo + ' ' + p.categoria);
-      if (modo === 'inv' && filtroInv !== 'todos' && estado(p) !== filtroInv) return false;
-      return (!cat || p.categoria === cat) && q.every(function (t) { return h.indexOf(t) >= 0; });
-    }).sort(function (a, b) { return a.nombre.localeCompare(b.nombre, 'es'); });
+    var lista = filtrados();
 
     $('#sub').textContent = !cargado ? 'Cargando…' : (items.length ? items.length + (items.length === 1 ? ' producto' : ' productos') : 'Todavía no hay productos');
     $('#cuenta').textContent = cargado && items.length ? (lista.length === items.length ? '' : lista.length + ' de ' + items.length) : '';
@@ -561,7 +571,8 @@
   $('#buscar').addEventListener('keydown', function (e) { if (e.key === 'Enter') e.target.blur(); });
   $('#chips').addEventListener('click', function (e) {
     var b = e.target.closest('.chip'); if (!b) return;
-    $('#categoria').value = b.getAttribute('data-c');
+    if (b.hasAttribute('data-sf')) soloSinFoto = !soloSinFoto;
+    else { $('#categoria').value = b.getAttribute('data-c'); if (!b.getAttribute('data-c')) soloSinFoto = false; }
     pintarChips(); pintar();
   });
   $('#nuevo').addEventListener('click', function () { abrir(null); });
@@ -616,8 +627,17 @@
       unidad: $('#f-unidad').value.trim(), minimo: minimo, stockInicial: ini,
       fotoAccion: foto.accion, fotoDatos: foto.accion === 'nueva' ? foto.datos : ''
     };
+    var conFoto = foto.accion === 'nueva', seguir = soloSinFoto && modo === 'cat' && !!actual && conFoto;
     llamar('guardar', datos, guardarClave()).then(function () {
-      ocupar(false); cerrar(); aviso(actual ? 'Cambios guardados' : 'Producto agregado'); return cargar();
+      var editado = !!actual;
+      ocupar(false); cerrar();
+      if (!seguir) { aviso(editado ? 'Cambios guardados' : 'Producto agregado'); return cargar(); }
+      // Modo «Sin foto»: al guardar una foto se abre el siguiente producto sin foto.
+      return cargar().then(function () {
+        var sig = filtrados()[0];
+        if (sig) { aviso('Foto guardada · faltan ' + sinFoto().length); abrir(sig); }
+        else aviso('Listo: todos los productos tienen foto');
+      });
     }).catch(function (err) { ocupar(false); $('#error').textContent = mensaje(err); });
   });
 
