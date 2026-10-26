@@ -1,5 +1,5 @@
 // Hace que la página se pueda instalar y abra rápido. Los datos siempre vienen de internet.
-const CACHE = 'catalogo-v5';
+const CACHE = 'catalogo-v6';
 const BASICOS = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'favicon-32.png'];
 
 self.addEventListener('install', function (e) {

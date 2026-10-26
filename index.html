@@ -74,10 +74,10 @@
   .tab.on { color:var(--accent); font-weight:800; }
   .tab.on .ic { background:var(--accent-2); }
 
-  #fondo, #fondo-venta, #fondo-inv { position:fixed; inset:0; z-index:20; background:rgba(20,33,27,.5); display:flex; align-items:flex-end; justify-content:center; }
+  #fondo, #fondo-venta, #fondo-inv, #fondo-cam { position:fixed; inset:0; z-index:20; background:rgba(20,33,27,.5); display:flex; align-items:flex-end; justify-content:center; }
   .hoja { width:100%; max-width:520px; max-height:92%; overflow-y:auto; background:var(--surface); border-radius:26px 26px 0 0; padding:12px 20px 26px; }
   .hoja::before { content:""; display:block; width:40px; height:4px; margin:0 auto 14px; border-radius:2px; background:var(--line); }
-  @media (min-width:640px) { #fondo, #fondo-venta, #fondo-inv { align-items:center; } .hoja { border-radius:22px; } }
+  @media (min-width:640px) { #fondo, #fondo-venta, #fondo-inv, #fondo-cam { align-items:center; } .hoja { border-radius:22px; } }
   .hoja h2 { margin:0 0 14px; font-size:24px; letter-spacing:-.01em; }
   .foto-fila { display:flex; gap:14px; align-items:center; margin-bottom:14px; }
   #caja-foto { flex:none; width:96px; height:96px; border-radius:16px; background:var(--tile); display:grid; place-items:center; overflow:hidden; color:var(--muted); font-size:12px; text-align:center; }
@@ -184,6 +184,14 @@
   .venta .it span:last-child { font-weight:600; white-space:nowrap; }
   #r-estado { color:var(--muted); font-size:14px; }
   .r-vacio { padding:24px 16px; border:1.5px dashed var(--line); border-radius:16px; text-align:center; color:var(--muted); }
+  #btn-cam { width:100%; margin:4px 0 10px; }
+  .cam-falta { margin:0 0 6px; color:var(--muted); font-size:14px; font-weight:600; }
+  .cam-nombre { margin:0 0 6px; font-size:28px; line-height:1.15; font-weight:800; letter-spacing:-.02em; overflow-wrap:anywhere; }
+  .cam-meta { margin:0 0 18px; color:var(--muted); }
+  .cam-grande { display:flex; align-items:center; justify-content:center; gap:10px; width:100%; min-height:72px; border-radius:18px; background:var(--accent); color:#fff; font-size:20px; font-weight:800; cursor:pointer; }
+  .cam-grande svg { width:28px; height:28px; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+  .cam-estado { min-height:1.5em; margin:12px 0 10px; font-weight:600; font-size:14px; color:var(--accent); }
+  .cam-estado.mal { color:var(--danger); }
 </style>
 </head>
 <body>
@@ -194,6 +202,7 @@
     <div class="chips" id="chips" role="group" aria-label="Categorías"></div>
     <select id="categoria" aria-label="Categoría" hidden></select>
   </div>
+  <button type="button" class="btn pri" id="btn-cam" hidden>Tomar fotos seguidas</button>
   <div class="filtros" id="filtros-inv" role="group" aria-label="Filtrar inventario" hidden>
     <button type="button" class="fil on" data-f="todos">Todos</button>
     <button type="button" class="fil" data-f="bajo">Poco</button>
@@ -320,6 +329,21 @@
       <button type="button" class="btn pri" id="inv-guardar">Guardar</button>
       <button type="button" class="btn sec" id="inv-cerrar">Cancelar</button>
       <button type="button" class="btn sec" id="inv-editar">Editar producto</button>
+    </div>
+  </div>
+</div>
+<div id="fondo-cam" hidden>
+  <div class="hoja" role="dialog" aria-modal="true" aria-labelledby="cam-nombre">
+    <p class="cam-falta" id="cam-falta"></p>
+    <h2 class="cam-nombre" id="cam-nombre"></h2>
+    <p class="cam-meta" id="cam-meta"></p>
+    <label class="cam-grande" for="cam-in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg>Tomar foto</label>
+    <input id="cam-in" type="file" accept="image/*" capture="environment" style="position:absolute;opacity:0;width:1px;height:1px">
+    <p class="cam-estado" id="cam-estado" role="status"></p>
+    <div class="campo" id="campo-clave-c" hidden><label for="clave-c">Clave</label><input id="clave-c" type="password" autocomplete="off"></div>
+    <div class="acciones">
+      <button type="button" class="btn sec" id="cam-saltar">Saltar este</button>
+      <button type="button" class="btn sec" id="cam-fin">Terminar</button>
     </div>
   </div>
 </div>
@@ -450,6 +474,7 @@
     pintarBarra();
     pintarFiltros();
     var lista = filtrados();
+    $('#btn-cam').hidden = !(modo === 'cat' && soloSinFoto && lista.length && !lista.every(function (p) { return p.foto; }));
 
     $('#sub').textContent = !cargado ? 'Cargando…' : (items.length ? items.length + (items.length === 1 ? ' producto' : ' productos') : 'Todavía no hay productos');
     $('#cuenta').textContent = cargado && items.length ? (lista.length === items.length ? '' : lista.length + ' de ' + items.length) : '';
@@ -597,6 +622,7 @@
     if (!$('#fondo').hidden) cerrar();
     else if (!$('#fondo-venta').hidden) cerrarVenta();
     else if (!$('#fondo-inv').hidden) cerrarInv();
+    else if (!$('#fondo-cam').hidden) terminarCam();
   });
   $('#f-precio').addEventListener('input', function (e) {
     var d = e.target.value.replace(/\D/g, '').slice(0, 12).replace(/^0+(?=\d)/, '');
@@ -1092,6 +1118,81 @@
     }).then(function () {
       inv.ocupado = false; btn.disabled = false; btn.textContent = 'Guardar';
     });
+  });
+
+  /* ---------- Fotos seguidas ---------- */
+  var cam = { cola: [], i: 0, pend: 0, hechas: 0, fallidas: [], cadena: Promise.resolve() };
+  function pintarCam() {
+    var p = cam.cola[cam.i];
+    if (!p) return;
+    $('#cam-falta').textContent = 'Faltan ' + (cam.cola.length - cam.i) + (cam.hechas ? ' · guardadas ' + cam.hechas : '');
+    $('#cam-nombre').textContent = p.nombre;
+    $('#cam-meta').textContent = '$' + miles(p.precio) + (p.categoria ? ' · ' + p.categoria : '');
+  }
+  function estadoCam(t, mal) {
+    var e = $('#cam-estado'); e.textContent = t || ''; e.classList.toggle('mal', !!mal);
+  }
+  function abrirCam() {
+    cam.cola = filtrados().filter(function (p) { return !p.foto; });
+    if (!cam.cola.length) return;
+    cam.i = 0; cam.pend = 0; cam.hechas = 0; cam.fallidas = []; cam.cadena = Promise.resolve();
+    $('#campo-clave-c').hidden = !necesitaClave;
+    try { $('#clave-c').value = sessionStorage.getItem('clave') || ''; } catch (e) { /* sin almacenamiento */ }
+    estadoCam('');
+    pintarCam();
+    $('#fondo-cam').hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+  function terminarCam() {
+    $('#fondo-cam').hidden = true;
+    document.body.style.overflow = '';
+    var f = cam.fallidas.length;
+    var pend = cam.pend;
+    if (pend) aviso('Guardando ' + pend + ' foto' + (pend === 1 ? '' : 's') + ' en segundo plano…', 4000);
+    cam.cadena.then(function () {
+      if (cam.fallidas.length) aviso('No se guardó la foto de: ' + cam.fallidas.join(', '), 8000);
+      else if (cam.hechas) aviso('Listo · ' + cam.hechas + ' foto' + (cam.hechas === 1 ? '' : 's') + ' guardada' + (cam.hechas === 1 ? '' : 's'), 4000);
+      return cargar();
+    });
+  }
+  function siguienteCam() {
+    cam.i++;
+    if (cam.i >= cam.cola.length) { terminarCam(); return; }
+    pintarCam();
+  }
+  $('#btn-cam').addEventListener('click', abrirCam);
+  $('#cam-saltar').addEventListener('click', siguienteCam);
+  $('#cam-fin').addEventListener('click', terminarCam);
+  $('#cam-in').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0]; e.target.value = '';
+    var p = cam.cola[cam.i];
+    if (!f || !p) return;
+    var clave = '';
+    if (necesitaClave) {
+      clave = $('#clave-c').value;
+      try { sessionStorage.setItem('clave', clave); } catch (er) { /* sin almacenamiento */ }
+    }
+    estadoCam('Foto tomada: ' + p.nombre);
+    cam.pend++;
+    // Se guarda en segundo plano y se pasa al siguiente producto sin esperar.
+    cam.cadena = cam.cadena.then(function () {
+      return reducir(f).then(function (datos) {
+        return llamar('guardar', {
+          id: p.id, nombre: p.nombre, precio: p.precio, codigo: p.codigo, categoria: p.categoria,
+          unidad: p.unidad, minimo: p.minimo === null ? '' : p.minimo, stockInicial: '',
+          fotoAccion: 'nueva', fotoDatos: datos
+        }, clave);
+      }).then(function () {
+        p.foto = 'guardada'; cam.hechas++;
+      }).catch(function (err) {
+        cam.fallidas.push(p.nombre);
+        if (!$('#fondo-cam').hidden) estadoCam('No se guardó «' + p.nombre + '»: ' + mensaje(err), true);
+      }).then(function () {
+        cam.pend--;
+        if (!$('#fondo-cam').hidden) pintarCam();
+      });
+    });
+    siguienteCam();
   });
 
   var registrando = false;
