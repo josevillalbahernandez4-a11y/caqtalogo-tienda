@@ -410,9 +410,10 @@
     var cur = $('#categoria').value, caja = $('#chips'), nsf = sinFoto().length, k = cats.join('|') + '#' + nsf;
     if (k !== chipsClave) {
       chipsClave = k;
-      caja.innerHTML = ['Todo'].concat(cats).map(function (c, i) {
-        return '<button type="button" class="chip" data-c="' + (i ? esc(c) : '') + '">' + esc(c) + '</button>';
-      }).join('') + (nsf ? '<button type="button" class="chip sf" data-sf="1">Sin foto (' + nsf + ')</button>' : '');
+      var sf = nsf ? '<button type="button" class="chip sf" data-sf="1">Sin foto (' + nsf + ')</button>' : '';
+      caja.innerHTML = '<button type="button" class="chip" data-c="">Todo</button>' + sf + cats.map(function (c) {
+        return '<button type="button" class="chip" data-c="' + esc(c) + '">' + esc(c) + '</button>';
+      }).join('');
     }
     Array.prototype.forEach.call(caja.querySelectorAll('.chip'), function (b) {
       if (b.hasAttribute('data-sf')) b.classList.toggle('on', soloSinFoto);
