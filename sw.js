@@ -1,5 +1,5 @@
 // Hace que la página se pueda instalar y abra rápido. Los datos siempre vienen de internet.
-const CACHE = 'catalogo-v3';
+const CACHE = 'catalogo-v4';
 const BASICOS = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'favicon-32.png'];
 
 self.addEventListener('install', function (e) {
@@ -19,7 +19,7 @@ self.addEventListener('fetch', function (e) {
   const r = e.request;
   if (r.method !== 'GET' || new URL(r.url).origin !== self.location.origin) return;
   e.respondWith(
-    fetch(r).then(function (res) {
+    fetch(r, { cache: 'no-cache' }).then(function (res) {
       if (res && res.ok) { const copia = res.clone(); caches.open(CACHE).then(function (c) { c.put(r, copia); }); }
       return res;
     }).catch(function () { return caches.match(r).then(function (g) { return g || caches.match('index.html'); }); })
