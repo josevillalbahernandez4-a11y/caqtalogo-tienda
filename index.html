@@ -74,10 +74,10 @@
   .tab.on { color:var(--accent); font-weight:800; }
   .tab.on .ic { background:var(--accent-2); }
 
-  #fondo, #fondo-venta, #fondo-inv, #fondo-cam { position:fixed; inset:0; z-index:20; background:rgba(20,33,27,.5); display:flex; align-items:flex-end; justify-content:center; }
+  #fondo, #fondo-venta, #fondo-inv, #fondo-cam, #fondo-peso { position:fixed; inset:0; z-index:20; background:rgba(20,33,27,.5); display:flex; align-items:flex-end; justify-content:center; }
   .hoja { width:100%; max-width:520px; max-height:92%; overflow-y:auto; background:var(--surface); border-radius:26px 26px 0 0; padding:12px 20px 26px; }
   .hoja::before { content:""; display:block; width:40px; height:4px; margin:0 auto 14px; border-radius:2px; background:var(--line); }
-  @media (min-width:640px) { #fondo, #fondo-venta, #fondo-inv, #fondo-cam { align-items:center; } .hoja { border-radius:22px; } }
+  @media (min-width:640px) { #fondo, #fondo-venta, #fondo-inv, #fondo-cam, #fondo-peso { align-items:center; } .hoja { border-radius:22px; } }
   .hoja h2 { margin:0 0 14px; font-size:24px; letter-spacing:-.01em; }
   .foto-fila { display:flex; gap:14px; align-items:center; margin-bottom:14px; }
   #caja-foto { flex:none; width:96px; height:96px; border-radius:16px; background:var(--tile); display:grid; place-items:center; overflow:hidden; color:var(--muted); font-size:12px; text-align:center; }
@@ -192,6 +192,16 @@
   .cam-grande svg { width:28px; height:28px; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
   .cam-estado { min-height:1.5em; margin:12px 0 10px; font-weight:600; font-size:14px; color:var(--accent); }
   .cam-estado.mal { color:var(--danger); }
+  .campo select { width:100%; height:50px; padding:0 12px; border:1.5px solid transparent; border-radius:14px; background:var(--field); font-size:16px; }
+  .campo select:focus { outline:none; border-color:var(--accent); background:#fff; box-shadow:0 0 0 3px var(--accent-2); }
+  .precio small.por { font-size:12px; font-weight:700; color:#5a4a00; margin-left:2px; }
+  .rapidos { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 12px; }
+  .rapido { min-height:40px; padding:0 14px; border:0; border-radius:999px; background:var(--tile); font-weight:700; font-size:14px; cursor:pointer; }
+  .rapido:active { background:var(--accent-2); }
+  .pe-prev { min-height:3em; margin:0 0 10px; font-weight:700; font-size:18px; color:var(--accent); }
+  .pe-prev.mal { color:var(--danger); font-size:15px; }
+  .linea .cambiar { min-height:40px; padding:0 12px; border:0; border-radius:12px; background:var(--field); font-weight:700; font-size:14px; cursor:pointer; }
+  .linea .quitar { width:36px; height:40px; border:0; border-radius:12px; background:transparent; color:var(--danger); font-size:20px; font-weight:700; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -267,16 +277,17 @@
         </div>
       </div>
       <div class="campo"><label for="f-nombre">Nombre</label><input id="f-nombre" type="text" maxlength="120" autocomplete="off" placeholder="Ej. Arroz blanco 1 kg"></div>
-      <div class="campo"><label for="f-precio">Precio ($)</label><input id="f-precio" type="text" inputmode="numeric" autocomplete="off" placeholder="0"></div>
+      <div class="campo"><label for="f-precio" id="l-precio">Precio ($)</label><input id="f-precio" type="text" inputmode="numeric" autocomplete="off" placeholder="0"></div>
       <div class="dos">
         <div class="campo"><label for="f-codigo">Código (opcional)</label><input id="f-codigo" type="text" maxlength="40" autocomplete="off"></div>
         <div class="campo"><label for="f-cat">Categoría (opcional)</label><input id="f-cat" type="text" maxlength="40" list="cats" autocomplete="off"><datalist id="cats"></datalist></div>
       </div>
+      <div class="campo"><label for="f-venta">¿Cómo se vende?</label><select id="f-venta"><option value="">Por unidad (paquete, botella…)</option><option value="kilo">Por peso: el precio es por kilo</option><option value="libra">Por peso: el precio es por libra</option></select></div>
       <div class="dos">
         <div class="campo"><label for="f-unidad">Unidad (opcional)</label><input id="f-unidad" type="text" maxlength="20" list="unidades" autocomplete="off" placeholder="Ej. libras"><datalist id="unidades"></datalist></div>
         <div class="campo"><label for="f-min">Avisar cuando queden (opcional)</label><input id="f-min" type="text" inputmode="decimal" autocomplete="off" placeholder="Ej. 5"></div>
       </div>
-      <div class="campo" id="campo-stock-ini"><label for="f-stock">Cantidad en inventario (opcional)</label><input id="f-stock" type="text" inputmode="decimal" autocomplete="off" placeholder="Ej. 30"></div>
+      <div class="campo" id="campo-stock-ini"><label for="f-stock" id="l-stock">Cantidad en inventario (opcional)</label><input id="f-stock" type="text" inputmode="decimal" autocomplete="off" placeholder="Ej. 30"></div>
       <p class="ayuda" id="nota-stock" hidden></p>
       <div class="campo" id="campo-clave" hidden><label for="f-clave">Clave</label><input id="f-clave" type="password" autocomplete="off"></div>
       <p id="error" role="alert"></p>
@@ -332,6 +343,27 @@
     </div>
   </div>
 </div>
+<div id="fondo-peso" hidden>
+  <div class="hoja" role="dialog" aria-modal="true" aria-labelledby="pe-nombre">
+    <h2 id="pe-nombre"></h2>
+    <p class="ayuda" id="pe-precio" style="margin-top:-8px"></p>
+    <div class="modos" id="pe-modos" style="margin-bottom:14px">
+      <button type="button" class="modo on" data-m="peso">Por peso</button>
+      <button type="button" class="modo" data-m="valor">Por valor ($)</button>
+    </div>
+    <div class="dos">
+      <div class="campo"><label for="pe-cant" id="pe-label"></label><input id="pe-cant" type="text" inputmode="decimal" autocomplete="off" placeholder="0"></div>
+      <div class="campo" id="pe-campo-u"><label for="pe-u">Medida</label><select id="pe-u"><option value="g">gramos</option><option value="lb">libras</option><option value="kg">kilos</option></select></div>
+    </div>
+    <div class="rapidos" id="pe-rapidos"></div>
+    <p class="pe-prev" id="pe-prev" aria-live="polite"></p>
+    <p class="err" id="error-peso" role="alert"></p>
+    <div class="acciones">
+      <button type="button" class="btn pri" id="pe-ok">Agregar a la venta</button>
+      <button type="button" class="btn sec" id="pe-cerrar">Cancelar</button>
+    </div>
+  </div>
+</div>
 <div id="fondo-cam" hidden>
   <div class="hoja" role="dialog" aria-modal="true" aria-labelledby="cam-nombre">
     <p class="cam-falta" id="cam-falta"></p>
@@ -354,7 +386,7 @@
   'use strict';
   var $ = function (s) { return document.querySelector(s); };
   var items = [], cargado = false, necesitaClave = false, necesitaRep = false, claveRep = '', actual = null, ocupado = false;
-  var modo = 'cat', carrito = {}, filtroInv = 'todos', soloSinFoto = false;
+  var modo = 'cat', carrito = {}, pesos = {}, filtroInv = 'todos', soloSinFoto = false;
   var foto = { accion: 'mantener', datos: '', url: '' };
   var timer = 0;
 
@@ -383,10 +415,13 @@
   }
   // Inventario: stock === null significa que ese producto no lleva inventario.
   function num(n) {
-    var r = Math.round(n * 100) / 100, partes = String(r).split('.');
+    var r = Math.round(n * 1000) / 1000, partes = String(r).split('.');
     return partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (partes[1] ? ',' + partes[1] : '');
   }
-  function plano(n) { return String(Math.round(n * 100) / 100).replace('.', ','); }
+  function plano(n) { return String(Math.round(n * 1000) / 1000).replace('.', ','); }
+  var KG = { kilo: 1, libra: 0.5 };   // cuánto pesa en kilos la medida base del producto
+  function medida(m, q) { return m === 'kilo' ? (q === 1 ? 'kilo' : 'kilos') : (q === 1 ? 'libra' : 'libras'); }
+  function topePeso(p) { return p.stock === null ? Infinity : Math.max(0, p.stock); }
   function dec(t) {
     t = String(t == null ? '' : t).trim().replace(',', '.');
     if (!t) return '';
@@ -483,6 +518,7 @@
       var cuando = hace(p.fecha);
       var cant = modo === 'venta' ? (carrito[p.id] || 0) : 0;
       var badge = cant ? '<span class="cant">×' + cant + '</span>' : '';
+      if (modo === 'venta' && pesos[p.id]) badge = '<span class="cant">' + esc(num(pesos[p.id].c)) + ' ' + (p.peso === 'kilo' ? 'kg' : 'lb') + '</span>';
       var st = estado(p), chip = '';
       if (st === 'agotado') chip = '<span class="stk agotado">Agotado</span>';
       else if (st === 'bajo') chip = '<span class="stk bajo">Quedan ' + esc(cantTxt(p, p.stock)) + '</span>';
@@ -490,10 +526,10 @@
       var meta, grande;
       if (modo === 'inv') {
         grande = p.stock === null ? '<span class="precio sin">Sin inventario</span>' : '<span class="precio">' + esc(num(p.stock)) + (p.unidad ? '<small> ' + esc(p.unidad) + '</small>' : '') + '</span>';
-        meta = '$' + miles(p.precio) + ' c/u' + (p.categoria ? ' · ' + p.categoria : '');
+        meta = '$' + miles(p.precio) + (p.peso ? ' por ' + p.peso : ' c/u') + (p.categoria ? ' · ' + p.categoria : '');
       } else {
         grande = '<span class="precio">$' + miles(p.precio) + '</span>';
-        meta = [p.codigo, p.categoria].filter(Boolean).join(' · ');
+        meta = (p.peso ? 'por ' + p.peso + (p.codigo || p.categoria ? ' · ' : '') : '') + [p.codigo, p.categoria].filter(Boolean).join(' · ');
       }
       var agot = modo === 'venta' && st === 'agotado' ? ' agot' : '';
       return '<li><button type="button" class="tarjeta' + agot + '" data-id="' + esc(p.id) + '"><span class="foto">' + img + badge + chip + '</span><span class="info"><span class="nombre">' + esc(p.nombre) + '</span>' + grande + (meta ? '<span class="meta">' + esc(meta) + '</span>' : '') + (cuando && modo !== 'inv' ? '<span class="meta">Precio actualizado ' + esc(cuando) + '</span>' : '') + '</span></button></li>';
@@ -514,6 +550,15 @@
         if (!p) { delete carrito[id]; ajustado = true; return; }
         var d = disponible(p);
         if (carrito[id] > d) { if (d > 0) carrito[id] = d; else delete carrito[id]; ajustado = true; }
+      });
+      Object.keys(pesos).forEach(function (id) {
+        var p = items.filter(function (x) { return x.id === id; })[0];
+        if (!p || !p.peso) { delete pesos[id]; ajustado = true; return; }
+        var t = topePeso(p);
+        if (pesos[id].c > t) {
+          if (t > 0) { pesos[id].c = Math.round(t * 1000) / 1000; pesos[id].s = Math.round(p.precio * pesos[id].c); } else delete pesos[id];
+          ajustado = true;
+        }
       });
       if (ajustado) { guardarCarrito(); aviso('Se ajustó la venta a lo que hay en inventario', 4500); }
       pintarCategorias(); pintar();
@@ -537,12 +582,14 @@
     $('#f-precio').value = p && p.precio ? miles(p.precio) : '';
     $('#f-codigo').value = p ? p.codigo : '';
     $('#f-cat').value = p ? p.categoria : ($('#categoria').value || '');
+    $('#f-venta').value = p ? (p.peso || '') : '';
     $('#f-unidad').value = p ? p.unidad : '';
     $('#f-min').value = p && p.minimo !== null ? plano(p.minimo) : '';
     $('#f-stock').value = '';
     $('#campo-stock-ini').hidden = !!p;
     $('#nota-stock').hidden = !p;
     $('#nota-stock').textContent = !p ? '' : (p.stock === null ? 'Este producto aún no lleva inventario. Se anota desde la pestaña Inventario.' : 'En inventario: ' + cantTxt(p, p.stock) + '. Para cambiarlo usa la pestaña Inventario.');
+    ajustarFormPeso();
     $('#campo-clave').hidden = !necesitaClave;
     try { $('#f-clave').value = sessionStorage.getItem('clave') || ''; } catch (e) { /* sin almacenamiento */ }
     $('#borrar').hidden = !p;
@@ -554,6 +601,16 @@
     document.body.style.overflow = 'hidden';
     (p ? $('#f-precio') : $('#f-nombre')).focus();
   }
+
+  // Si se vende por peso, la unidad es kilos o libras y el precio es por esa unidad.
+  function ajustarFormPeso() {
+    var v = $('#f-venta').value, u = $('#f-unidad');
+    $('#l-precio').textContent = v ? 'Precio por ' + v + ' ($)' : 'Precio ($)';
+    $('#l-stock').textContent = v ? 'Cantidad en inventario (' + (v === 'kilo' ? 'kilos' : 'libras') + ', opcional)' : 'Cantidad en inventario (opcional)';
+    if (v) u.value = v === 'kilo' ? 'kilos' : 'libras';
+    u.readOnly = !!v;
+  }
+  $('#f-venta').addEventListener('change', ajustarFormPeso);
 
   function cerrar() {
     if (ocupado) return;
@@ -607,6 +664,7 @@
     var id = b.getAttribute('data-id');
     var p = items.filter(function (x) { return x.id === id; })[0];
     if (!p) return;
+    if (modo === 'venta' && p.peso) { abrirPeso(p, false); return; }
     if (modo === 'venta') {
       var d = disponible(p), en = carrito[p.id] || 0;
       if (en >= d) { aviso(d <= 0 ? '«' + p.nombre + '» está agotado' : 'Solo hay ' + cantTxt(p, d) + ' de «' + p.nombre + '»'); return; }
@@ -623,6 +681,7 @@
     else if (!$('#fondo-venta').hidden) cerrarVenta();
     else if (!$('#fondo-inv').hidden) cerrarInv();
     else if (!$('#fondo-cam').hidden) terminarCam();
+    else if (!$('#fondo-peso').hidden) cerrarPeso();
   });
   $('#f-precio').addEventListener('input', function (e) {
     var d = e.target.value.replace(/\D/g, '').slice(0, 12).replace(/^0+(?=\d)/, '');
@@ -651,7 +710,7 @@
     var datos = {
       id: actual ? actual.id : '', nombre: nombre, precio: Number(digitos),
       codigo: $('#f-codigo').value.trim(), categoria: $('#f-cat').value.trim(),
-      unidad: $('#f-unidad').value.trim(), minimo: minimo, stockInicial: ini,
+      unidad: $('#f-unidad').value.trim(), minimo: minimo, stockInicial: ini, peso: $('#f-venta').value,
       fotoAccion: foto.accion, fotoDatos: foto.accion === 'nueva' ? foto.datos : ''
     };
     var conFoto = foto.accion === 'nueva', seguir = soloSinFoto && modo === 'cat' && !!actual && conFoto;
@@ -682,26 +741,31 @@
 
   /* ---------- Venta ---------- */
   function guardarCarrito() {
-    try { sessionStorage.setItem('carrito', JSON.stringify(carrito)); } catch (e) { /* sin almacenamiento */ }
+    try { sessionStorage.setItem('carrito', JSON.stringify(carrito)); sessionStorage.setItem('carritoPeso', JSON.stringify(pesos)); } catch (e) { /* sin almacenamiento */ }
   }
   function leerCarrito() {
     try {
       var r = JSON.parse(sessionStorage.getItem('carrito') || '{}');
       if (r && typeof r === 'object') carrito = r;
+      var w = JSON.parse(sessionStorage.getItem('carritoPeso') || '{}');
+      if (w && typeof w === 'object') pesos = w;
     } catch (e) { /* sin almacenamiento */ }
   }
+  // Cada línea: producto, cantidad (o peso en kilos/libras del producto) y su subtotal en pesos.
   function lineasVenta() {
-    return items.filter(function (p) { return carrito[p.id] > 0; })
+    return items.filter(function (p) { return p.peso ? !!pesos[p.id] : carrito[p.id] > 0; })
       .sort(function (a, b) { return a.nombre.localeCompare(b.nombre, 'es'); })
-      .map(function (p) { return { p: p, q: carrito[p.id] }; });
+      .map(function (p) {
+        return p.peso ? { p: p, q: pesos[p.id].c, s: pesos[p.id].s, peso: true } : { p: p, q: carrito[p.id], s: p.precio * carrito[p.id], peso: false };
+      });
   }
   function totalVenta() {
-    return lineasVenta().reduce(function (s, l) { return s + l.p.precio * l.q; }, 0);
+    return lineasVenta().reduce(function (t, l) { return t + l.s; }, 0);
   }
   function pintarBarra() {
-    var ls = lineasVenta(), n = ls.reduce(function (s, l) { return s + l.q; }, 0), b = $('#barra-venta');
+    var ls = lineasVenta(), n = ls.reduce(function (t, l) { return t + (l.peso ? 1 : l.q); }, 0), b = $('#barra-venta');
     b.hidden = !(modo === 'venta' && n > 0);
-    if (!b.hidden) b.innerHTML = '<span>Ver venta · ' + n + (n === 1 ? ' unidad' : ' unidades') + '</span><span>$' + miles(totalVenta()) + '</span>';
+    if (!b.hidden) b.innerHTML = '<span>Ver venta · ' + n + (n === 1 ? ' artículo' : ' artículos') + '</span><span>$' + miles(totalVenta()) + '</span>';
   }
   function pintarVuelto() {
     var rec = Number($('#recibido').value.replace(/\D/g, '')) || 0, t = totalVenta(), v = $('#vuelto');
@@ -713,10 +777,16 @@
     if (!ls.length) { cerrarVenta(); return; }
     $('#lineas').innerHTML = ls.map(function (l) {
       var id = esc(l.p.id), tope = l.q >= disponible(l.p);
+      if (l.peso) {
+        return '<div class="linea"><div class="t"><b>' + esc(l.p.nombre) + '</b><span>' + esc(num(l.q)) + ' ' + medida(l.p.peso, l.q) + ' · $' + miles(l.p.precio) + ' por ' + l.p.peso + '</span></div>' +
+          '<button type="button" class="cambiar" data-id="' + id + '" data-act="cambiar">Cambiar</button>' +
+          '<button type="button" class="quitar" data-id="' + id + '" data-act="quitar" aria-label="Quitar ' + esc(l.p.nombre) + '">×</button>' +
+          '<div class="importe">$' + miles(l.s) + '</div></div>';
+      }
       return '<div class="linea"><div class="t"><b>' + esc(l.p.nombre) + '</b><span>$' + miles(l.p.precio) + ' c/u' + (l.p.stock !== null ? ' · hay ' + esc(cantTxt(l.p, l.p.stock)) : '') + '</span></div>' +
         '<div class="cantidad"><button type="button" data-id="' + id + '" data-d="-1" aria-label="Quitar uno">−</button><output>' + l.q + '</output>' +
         '<button type="button" data-id="' + id + '" data-d="1" aria-label="Agregar uno"' + (tope ? ' disabled' : '') + '>+</button></div>' +
-        '<div class="importe">$' + miles(l.p.precio * l.q) + '</div></div>';
+        '<div class="importe">$' + miles(l.s) + '</div></div>';
     }).join('');
     $('#total').textContent = '$' + miles(totalVenta());
     pintarVuelto();
@@ -765,6 +835,14 @@
   $('#fondo-venta').addEventListener('mousedown', function (e) { if (e.target === $('#fondo-venta')) cerrarVenta(); });
   $('#lineas').addEventListener('click', function (e) {
     var b = e.target.closest('button[data-id]'); if (!b) return;
+    var act = b.getAttribute('data-act');
+    if (act) {
+      var pr = items.filter(function (x) { return x.id === b.getAttribute('data-id'); })[0];
+      if (!pr) return;
+      if (act === 'quitar') { delete pesos[pr.id]; guardarCarrito(); pintar(); pintarVenta(); }
+      else abrirPeso(pr, true);
+      return;
+    }
     var id = b.getAttribute('data-id'), q = (carrito[id] || 0) + Number(b.getAttribute('data-d'));
     if (q > 0) carrito[id] = q; else delete carrito[id];
     guardarCarrito(); pintar(); pintarVenta();
@@ -777,7 +855,7 @@
   $('#vaciar').addEventListener('click', function () {
     var b = $('#vaciar');
     if (b.textContent !== 'Vaciar venta') {
-      carrito = {}; guardarCarrito(); $('#recibido').value = ''; cerrarVenta(); pintar(); aviso('Venta vaciada');
+      carrito = {}; pesos = {}; guardarCarrito(); $('#recibido').value = ''; cerrarVenta(); pintar(); aviso('Venta vaciada');
     } else {
       b.textContent = 'Toca otra vez para vaciar';
     }
@@ -862,15 +940,15 @@
   function pintarTop(filas) {
     var mapa = {}, lista = [];
     filas.forEach(function (f) {
-      if (!mapa[f.p]) { mapa[f.p] = { p: f.p, q: 0, s: 0 }; lista.push(mapa[f.p]); }
-      mapa[f.p].q += f.q; mapa[f.p].s += f.s;
+      if (!mapa[f.p]) { mapa[f.p] = { p: f.p, q: 0, s: 0, m: '' }; lista.push(mapa[f.p]); }
+      mapa[f.p].q += f.q; mapa[f.p].s += f.s; if (f.m) mapa[f.p].m = f.m;
     });
     lista.sort(function (a, b) { return b.s - a.s; });
     lista = lista.slice(0, 8);
     var max = lista.length ? lista[0].s : 0;
     $('#top').innerHTML = lista.length ? lista.map(function (t) {
       return '<div class="top-fila"><span class="n">' + esc(t.p) + '</span><span class="v">' + dinero(t.s) + '</span>' +
-        '<span class="u">' + t.q + (t.q === 1 ? ' unidad' : ' unidades') + '</span><span></span>' +
+        '<span class="u">' + (t.m ? num(t.q) + ' ' + medida(t.m, t.q) : t.q + (t.q === 1 ? ' unidad' : ' unidades')) + '</span><span></span>' +
         '<span class="pb"><i style="width:' + (max ? Math.max(3, Math.round(t.s / max * 100)) : 0) + '%"></i></span></div>';
     }).join('') : '<div class="r-vacio">Sin ventas en este período.</div>';
   }
@@ -879,8 +957,8 @@
     var mapa = {}, lista = [];
     filas.forEach(function (f) {
       var k = f.f + '|' + f.v;
-      if (!mapa[k]) { mapa[k] = { k: k, f: f.f, h: f.h, v: f.v, total: 0, uds: 0, items: [] }; lista.push(mapa[k]); }
-      mapa[k].total += f.s; mapa[k].uds += f.q; mapa[k].items.push(f);
+      if (!mapa[k]) { mapa[k] = { k: k, f: f.f, h: f.h, v: f.v, total: 0, uds: 0, pesoN: 0, items: [] }; lista.push(mapa[k]); }
+      mapa[k].total += f.s; if (f.m) mapa[k].pesoN++; else mapa[k].uds += f.q; mapa[k].items.push(f);
     });
     return lista.sort(function (a, b) { return a.f < b.f ? 1 : a.f > b.f ? -1 : b.v - a.v; });
   }
@@ -903,9 +981,9 @@
         : '<div class="anular-zona"><button type="button" class="btn txt" data-act="anular" data-k="' + esc(s.k) + '">Anular venta</button></div>';
       html += '<div class="venta"><button type="button" class="venta-h" data-k="' + esc(s.k) + '" aria-expanded="' + abierta + '">' +
         '<span class="c"><b>' + dinero(s.total) + '</b><span class="s">Venta ' + s.v + ' · ' + esc(s.h) + '</span></span>' +
-        '<span class="s">' + s.uds + (s.uds === 1 ? ' unidad' : ' unidades') + ' · ' + s.items.length + (s.items.length === 1 ? ' producto' : ' productos') + '</span></button>' +
+        '<span class="s">' + (s.uds ? s.uds + (s.uds === 1 ? ' unidad · ' : ' unidades · ') : '') + (s.pesoN ? s.pesoN + ' por peso · ' : '') + s.items.length + (s.items.length === 1 ? ' producto' : ' productos') + '</span></button>' +
         (abierta ? '<div class="d">' + s.items.map(function (it) {
-          return '<div class="it"><span>' + it.q + ' × ' + esc(it.p) + '</span><span>' + dinero(it.s) + '</span></div>';
+          return '<div class="it"><span>' + (it.m ? esc(num(it.q)) + ' ' + medida(it.m, it.q) + ' de ' : it.q + ' × ') + esc(it.p) + '</span><span>' + dinero(it.s) + '</span></div>';
         }).join('') + zona + '</div>' : '') + '</div>';
     });
     cont.innerHTML = html;
@@ -916,7 +994,7 @@
     if (!rep.filas) return;
     var filas = filasPeriodo(), ventas = ventasAgrupadas(filas);
     var total = filas.reduce(function (s, f) { return s + f.s; }, 0);
-    var uds = filas.reduce(function (s, f) { return s + f.q; }, 0);
+    var uds = filas.reduce(function (s, f) { return s + (f.m ? 0 : f.q); }, 0);
     var nombrePeriodo = { hoy: 'Vendido hoy', '7': 'Vendido en 7 días', '30': 'Vendido en 30 días', todo: 'Vendido en total' }[rep.periodo];
     $('#kpis').innerHTML =
       '<div class="kpi grande"><small>' + nombrePeriodo + '</small><b>' + dinero(total) + '</b></div>' +
@@ -1120,6 +1198,101 @@
     });
   });
 
+  /* ---------- Venta por peso ---------- */
+  var pe = { p: null, modo: 'peso', edit: false };
+  var FKG = { g: 0.001, lb: 0.5, kg: 1 };
+  var RAP_PESO = [['¼ libra', 'lb', 0.25], ['½ libra', 'lb', 0.5], ['1 libra', 'lb', 1], ['1 kilo', 'kg', 1], ['2 kilos', 'kg', 2]];
+  var RAP_VALOR = [2000, 3000, 5000, 10000, 20000];
+  // Calcula peso (en la medida del producto) y valor según lo que se escribió.
+  function calcPeso() {
+    var p = pe.p, t = $('#pe-cant').value;
+    if (!p || !String(t).trim()) return null;
+    var c, sub;
+    if (pe.modo === 'peso') {
+      var v = dec(t);
+      if (v === '' || isNaN(v) || v <= 0) return { mal: 'Escribe un peso válido.' };
+      c = Math.round(v * FKG[$('#pe-u').value] / KG[p.peso] * 1000) / 1000;
+      sub = Math.round(p.precio * c);
+    } else {
+      var m = Number(String(t).replace(/\D/g, ''));
+      if (!m) return { mal: 'Escribe cuánto vas a cobrar.' };
+      c = Math.round(m / p.precio * 1000) / 1000;
+      sub = m;
+    }
+    if (!(c >= 0.001)) return { mal: 'Es muy poco para pesar.' };
+    return { c: c, s: sub };
+  }
+  function pintarPeso() {
+    var r = calcPeso(), el = $('#pe-prev'), p = pe.p;
+    el.classList.remove('mal');
+    if (!r) { el.textContent = ''; return; }
+    if (r.mal) { el.textContent = r.mal; el.classList.add('mal'); return; }
+    var previo = (!pe.edit && pesos[p.id]) ? pesos[p.id].c : 0;
+    var g = Math.round(r.c * KG[p.peso] * 1000);
+    el.textContent = '$' + miles(r.s) + ' · ' + num(r.c) + ' ' + medida(p.peso, r.c) + ' (' + miles(g) + ' g)';
+    if (previo) el.textContent += ' · se suma a lo que ya llevas';
+  }
+  function setPesoModo(m) {
+    pe.modo = m;
+    Array.prototype.forEach.call(document.querySelectorAll('#pe-modos .modo'), function (b) { b.classList.toggle('on', b.getAttribute('data-m') === m); });
+    $('#pe-label').textContent = m === 'peso' ? '¿Cuánto pesa?' : '¿Cuánto vas a cobrar? ($)';
+    $('#pe-campo-u').hidden = m !== 'peso';
+    $('#pe-cant').inputMode = m === 'peso' ? 'decimal' : 'numeric';
+    $('#pe-cant').value = '';
+    $('#pe-rapidos').innerHTML = m === 'peso'
+      ? RAP_PESO.map(function (r, i) { return '<button type="button" class="rapido" data-i="' + i + '">' + r[0] + '</button>'; }).join('')
+      : RAP_VALOR.map(function (v) { return '<button type="button" class="rapido" data-v="' + v + '">$' + miles(v) + '</button>'; }).join('');
+    pintarPeso();
+  }
+  function abrirPeso(p, editar) {
+    pe.p = p; pe.edit = !!editar;
+    $('#pe-nombre').textContent = p.nombre;
+    $('#pe-precio').textContent = '$' + miles(p.precio) + ' por ' + p.peso + (p.stock !== null ? ' · hay ' + cantTxt(p, p.stock) : '');
+    $('#pe-u').value = p.peso === 'libra' ? 'lb' : 'kg';
+    $('#error-peso').textContent = '';
+    $('#aviso').hidden = true;
+    setPesoModo('peso');
+    if (editar && pesos[p.id]) { $('#pe-u').value = p.peso === 'libra' ? 'lb' : 'kg'; $('#pe-cant').value = plano(pesos[p.id].c * KG[p.peso] / FKG[$('#pe-u').value]); pintarPeso(); }
+    $('#fondo-peso').hidden = false;
+    document.body.style.overflow = 'hidden';
+    $('#pe-cant').focus();
+  }
+  function cerrarPeso() {
+    $('#fondo-peso').hidden = true;
+    document.body.style.overflow = $('#fondo-venta').hidden ? '' : 'hidden';
+  }
+  $('#pe-modos').addEventListener('click', function (e) { var b = e.target.closest('.modo'); if (b) setPesoModo(b.getAttribute('data-m')); });
+  $('#pe-u').addEventListener('change', pintarPeso);
+  $('#pe-cant').addEventListener('input', function (e) {
+    if (pe.modo === 'valor') {
+      var d = e.target.value.replace(/\D/g, '').slice(0, 9).replace(/^0+(?=\d)/, '');
+      e.target.value = d ? miles(Number(d)) : '';
+    } else e.target.value = e.target.value.replace(/[^\d.,]/g, '').slice(0, 8);
+    pintarPeso();
+  });
+  $('#pe-cant').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('#pe-ok').click(); });
+  $('#pe-rapidos').addEventListener('click', function (e) {
+    var b = e.target.closest('.rapido'); if (!b) return;
+    if (pe.modo === 'peso') {
+      var r = RAP_PESO[Number(b.getAttribute('data-i'))];
+      $('#pe-u').value = r[1]; $('#pe-cant').value = plano(r[2]);
+    } else $('#pe-cant').value = miles(Number(b.getAttribute('data-v')));
+    pintarPeso();
+  });
+  $('#pe-cerrar').addEventListener('click', cerrarPeso);
+  $('#fondo-peso').addEventListener('mousedown', function (e) { if (e.target === $('#fondo-peso')) cerrarPeso(); });
+  $('#pe-ok').addEventListener('click', function () {
+    var r = calcPeso(), p = pe.p;
+    if (!r) { $('#error-peso').textContent = 'Escribe el peso o el valor.'; return; }
+    if (r.mal) { $('#error-peso').textContent = r.mal; return; }
+    var ya = (!pe.edit && pesos[p.id]) ? pesos[p.id] : { c: 0, s: 0 };
+    var c = Math.round((ya.c + r.c) * 1000) / 1000, sub = ya.s + r.s;
+    if (c > topePeso(p) + 0.0005) { $('#error-peso').textContent = topePeso(p) <= 0 ? '«' + p.nombre + '» está agotado.' : 'Solo hay ' + cantTxt(p, p.stock) + ' de «' + p.nombre + '».'; return; }
+    pesos[p.id] = { c: c, s: sub };
+    guardarCarrito(); cerrarPeso(); pintar();
+    if (!$('#fondo-venta').hidden) pintarVenta();
+  });
+
   /* ---------- Fotos seguidas ---------- */
   var cam = { cola: [], i: 0, pend: 0, hechas: 0, fallidas: [], cadena: Promise.resolve() };
   function pintarCam() {
@@ -1179,7 +1352,7 @@
       return reducir(f).then(function (datos) {
         return llamar('guardar', {
           id: p.id, nombre: p.nombre, precio: p.precio, codigo: p.codigo, categoria: p.categoria,
-          unidad: p.unidad, minimo: p.minimo === null ? '' : p.minimo, stockInicial: '',
+          unidad: p.unidad, minimo: p.minimo === null ? '' : p.minimo, stockInicial: '', peso: p.peso || '',
           fotoAccion: 'nueva', fotoDatos: datos
         }, clave);
       }).then(function () {
@@ -1208,9 +1381,9 @@
     var btn = $('#registrar');
     registrando = true; btn.disabled = true; btn.textContent = 'Registrando…';
     $('#error-venta').textContent = '';
-    var datos = { lineas: ls.map(function (l) { return { id: l.p.id, cantidad: l.q }; }) };
+    var datos = { lineas: ls.map(function (l) { return l.peso ? { id: l.p.id, cantidad: l.q, monto: l.s } : { id: l.p.id, cantidad: l.q }; }) };
     llamar('registrarVenta', datos, clave).then(function (r) {
-      carrito = {}; guardarCarrito(); $('#recibido').value = '';
+      carrito = {}; pesos = {}; guardarCarrito(); $('#recibido').value = '';
       cerrarVenta(); pintar();
       var av = (r.avisos || []).join(' · ');
       aviso('Venta ' + r.numero + ' registrada · $' + miles(r.total) + (av ? ' · ' + av : ''), av ? 7000 : 2800);
