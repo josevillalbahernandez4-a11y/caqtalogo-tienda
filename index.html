@@ -196,6 +196,8 @@
   .sub-fila b { color:var(--ink); }
   .extra { margin-top:14px; }
   .extra .campo { margin-bottom:6px; }
+  .extra + .extra { margin-top:6px; }
+  .sub-fila.rest b { color:var(--danger); }
 </style>
 </head>
 <body>
@@ -307,8 +309,13 @@
       <div class="campo"><label for="extra-m">Agregar otro cobro ($)</label><input id="extra-m" type="text" inputmode="numeric" autocomplete="off" placeholder="0"></div>
       <div class="campo"><label for="extra-t">Motivo (opcional)</label><input id="extra-t" type="text" maxlength="60" autocomplete="off" placeholder="Ej. domicilio"></div>
     </div>
+    <div class="dos extra">
+      <div class="campo"><label for="desc-m">Descontar ($)</label><input id="desc-m" type="text" inputmode="numeric" autocomplete="off" placeholder="0"></div>
+      <div class="campo"><label for="desc-t">Motivo (opcional)</label><input id="desc-t" type="text" maxlength="60" autocomplete="off" placeholder="Ej. cliente frecuente"></div>
+    </div>
     <div class="sub-fila" id="sub-fila" hidden><span>Productos</span><b id="sub-prod"></b></div>
     <div class="sub-fila" id="extra-fila" hidden><span id="extra-nom">Otro cobro</span><b id="extra-val"></b></div>
+    <div class="sub-fila rest" id="desc-fila" hidden><span id="desc-nom">Descuento</span><b id="desc-val"></b></div>
     <div class="total"><span>Total</span><strong id="total">$0</strong></div>
     <div class="campo"><label for="recibido">Recibido ($)</label><input id="recibido" type="text" inputmode="numeric" autocomplete="off" placeholder="0"></div>
     <p class="vuelto" id="vuelto" aria-live="polite"></p>
@@ -364,7 +371,7 @@
   'use strict';
   var $ = function (s) { return document.querySelector(s); };
   var items = [], cargado = false, necesitaClave = false, necesitaRep = false, claveRep = '', actual = null, ocupado = false;
-  var modo = 'cat', carrito = {}, extra = { m: 0, t: '' }, filtroInv = 'todos', soloSinFoto = false;
+  var modo = 'cat', carrito = {}, extra = { m: 0, t: '' }, desc = { m: 0, t: '' }, filtroInv = 'todos', soloSinFoto = false;
   var foto = { accion: 'mantener', datos: '', url: '' };
   var timer = 0;
 
@@ -692,7 +699,7 @@
 
   /* ---------- Venta ---------- */
   function guardarCarrito() {
-    try { sessionStorage.setItem('carrito', JSON.stringify(carrito)); sessionStorage.setItem('extra', JSON.stringify(extra)); } catch (e) { /* sin almacenamiento */ }
+    try { sessionStorage.setItem('carrito', JSON.stringify(carrito)); sessionStorage.setItem('extra', JSON.stringify(extra)); sessionStorage.setItem('desc', JSON.stringify(desc)); } catch (e) { /* sin almacenamiento */ }
   }
   function leerCarrito() {
     try {
@@ -700,6 +707,8 @@
       if (r && typeof r === 'object') carrito = r;
       var x = JSON.parse(sessionStorage.getItem('extra') || '{}');
       if (x && Number(x.m) > 0) extra = { m: Math.round(Number(x.m)), t: String(x.t || '').slice(0, 60) };
+      var d = JSON.parse(sessionStorage.getItem('desc') || '{}');
+      if (d && Number(d.m) > 0) desc = { m: Math.round(Number(d.m)), t: String(d.t || '').slice(0, 60) };
     } catch (e) { /* sin almacenamiento */ }
   }
   function lineasVenta() {
@@ -710,10 +719,14 @@
   function totalProductos() {
     return lineasVenta().reduce(function (s, l) { return s + l.p.precio * l.q; }, 0);
   }
-  // Total = productos + el otro cobro que agregó quien vende (solo si hay productos).
-  function totalVenta() {
+  // Total = productos + otro cobro − descuento (solo si hay productos; nunca menos de 0).
+  function brutoVenta() {
     var t = totalProductos();
     return t > 0 ? t + extra.m : 0;
+  }
+  function totalVenta() {
+    var b = brutoVenta();
+    return b > 0 ? Math.max(0, b - desc.m) : 0;
   }
   function pintarBarra() {
     var ls = lineasVenta(), n = ls.reduce(function (s, l) { return s + l.q; }, 0), b = $('#barra-venta');
@@ -738,12 +751,16 @@
     pintarTotales();
   }
   function pintarTotales() {
-    var hay = extra.m > 0;
-    $('#sub-fila').hidden = !hay; $('#extra-fila').hidden = !hay;
-    if (hay) {
-      $('#sub-prod').textContent = '$' + miles(totalProductos());
+    var hayE = extra.m > 0, hayD = desc.m > 0;
+    $('#sub-fila').hidden = !(hayE || hayD); $('#extra-fila').hidden = !hayE; $('#desc-fila').hidden = !hayD;
+    if (hayE || hayD) $('#sub-prod').textContent = '$' + miles(totalProductos());
+    if (hayE) {
       $('#extra-nom').textContent = extra.t || 'Otro cobro';
       $('#extra-val').textContent = '+ $' + miles(extra.m);
+    }
+    if (hayD) {
+      $('#desc-nom').textContent = desc.t || 'Descuento';
+      $('#desc-val').textContent = '− $' + miles(desc.m);
     }
     $('#total').textContent = '$' + miles(totalVenta());
     pintarVuelto();
@@ -756,6 +773,8 @@
     try { $('#clave-v').value = sessionStorage.getItem('clave') || ''; } catch (e) { /* sin almacenamiento */ }
     $('#extra-m').value = extra.m ? miles(extra.m) : '';
     $('#extra-t').value = extra.t;
+    $('#desc-m').value = desc.m ? miles(desc.m) : '';
+    $('#desc-t').value = desc.t;
     $('#fondo-venta').hidden = false;
     document.body.style.overflow = 'hidden';
     pintarVenta();
@@ -806,6 +825,15 @@
     guardarCarrito(); pintarTotales();
   });
   $('#extra-t').addEventListener('input', function (e) { extra.t = e.target.value.slice(0, 60); guardarCarrito(); pintarTotales(); });
+  $('#desc-m').addEventListener('input', function (e) {
+    var d = e.target.value.replace(/\D/g, '').slice(0, 9).replace(/^0+(?=\d)/, '');
+    var n = d ? Number(d) : 0, tope = brutoVenta();
+    if (tope > 0 && n > tope) n = tope;   // no se puede descontar más de lo que se cobra
+    e.target.value = n ? miles(n) : '';
+    desc.m = n;
+    guardarCarrito(); pintarTotales();
+  });
+  $('#desc-t').addEventListener('input', function (e) { desc.t = e.target.value.slice(0, 60); guardarCarrito(); pintarTotales(); });
   $('#recibido').addEventListener('input', function (e) {
     var d = e.target.value.replace(/\D/g, '').slice(0, 12).replace(/^0+(?=\d)/, '');
     e.target.value = d ? miles(Number(d)) : '';
@@ -814,7 +842,7 @@
   $('#vaciar').addEventListener('click', function () {
     var b = $('#vaciar');
     if (b.textContent !== 'Vaciar venta') {
-      carrito = {}; extra = { m: 0, t: '' }; guardarCarrito(); $('#recibido').value = ''; cerrarVenta(); pintar(); aviso('Venta vaciada');
+      carrito = {}; extra = { m: 0, t: '' }; desc = { m: 0, t: '' }; guardarCarrito(); $('#recibido').value = ''; cerrarVenta(); pintar(); aviso('Venta vaciada');
     } else {
       b.textContent = 'Toca otra vez para vaciar';
     }
@@ -836,7 +864,8 @@
     if (iso === addDias(rep.hoy, -1)) return 'Ayer';
     return etiquetaDia(iso, true);
   }
-  function dinero(n) { return '$' + miles(n); }
+  function dinero(n) { return (n < 0 ? '−' : '') + '$' + miles(Math.abs(n)); }
+  function esAjuste(f) { return f.k === 'Otro cobro' || f.k === 'Descuento'; }
 
   function filasPeriodo() {
     var todas = rep.filas || [], p = rep.periodo;
@@ -899,7 +928,7 @@
   function pintarTop(filas) {
     var mapa = {}, lista = [];
     filas.forEach(function (f) {
-      if (f.k === 'Otro cobro') return;
+      if (esAjuste(f)) return;
       if (!mapa[f.p]) { mapa[f.p] = { p: f.p, q: 0, s: 0 }; lista.push(mapa[f.p]); }
       mapa[f.p].q += f.q; mapa[f.p].s += f.s;
     });
@@ -918,7 +947,7 @@
     filas.forEach(function (f) {
       var k = f.f + '|' + f.v;
       if (!mapa[k]) { mapa[k] = { k: k, f: f.f, h: f.h, v: f.v, total: 0, uds: 0, items: [] }; lista.push(mapa[k]); }
-      mapa[k].total += f.s; if (f.k !== 'Otro cobro') mapa[k].uds += f.q; mapa[k].items.push(f);
+      mapa[k].total += f.s; if (!esAjuste(f)) mapa[k].uds += f.q; mapa[k].items.push(f);
     });
     return lista.sort(function (a, b) { return a.f < b.f ? 1 : a.f > b.f ? -1 : b.v - a.v; });
   }
@@ -941,9 +970,9 @@
         : '<div class="anular-zona"><button type="button" class="btn txt" data-act="anular" data-k="' + esc(s.k) + '">Anular venta</button></div>';
       html += '<div class="venta"><button type="button" class="venta-h" data-k="' + esc(s.k) + '" aria-expanded="' + abierta + '">' +
         '<span class="c"><b>' + dinero(s.total) + '</b><span class="s">Venta ' + s.v + ' · ' + esc(s.h) + '</span></span>' +
-        '<span class="s">' + s.uds + (s.uds === 1 ? ' unidad' : ' unidades') + ' · ' + s.items.length + (s.items.length === 1 ? ' producto' : ' productos') + '</span></button>' +
+        '<span class="s">' + s.uds + (s.uds === 1 ? ' unidad' : ' unidades') + ' · ' + s.items.filter(function (i) { return !esAjuste(i); }).length + (s.items.filter(function (i) { return !esAjuste(i); }).length === 1 ? ' producto' : ' productos') + '</span></button>' +
         (abierta ? '<div class="d">' + s.items.map(function (it) {
-          return '<div class="it"><span>' + it.q + ' × ' + esc(it.p) + '</span><span>' + dinero(it.s) + '</span></div>';
+          return '<div class="it"><span>' + (esAjuste(it) ? esc(it.p) : it.q + ' × ' + esc(it.p)) + '</span><span>' + dinero(it.s) + '</span></div>';
         }).join('') + zona + '</div>' : '') + '</div>';
     });
     cont.innerHTML = html;
@@ -954,14 +983,14 @@
     if (!rep.filas) return;
     var filas = filasPeriodo(), ventas = ventasAgrupadas(filas);
     var total = filas.reduce(function (s, f) { return s + f.s; }, 0);
-    var uds = filas.reduce(function (s, f) { return s + (f.k === 'Otro cobro' ? 0 : f.q); }, 0);
+    var uds = filas.reduce(function (s, f) { return s + (esAjuste(f) ? 0 : f.q); }, 0);
     var nombrePeriodo = { hoy: 'Vendido hoy', '7': 'Vendido en 7 días', '30': 'Vendido en 30 días', todo: 'Vendido en total' }[rep.periodo];
     $('#kpis').innerHTML =
       '<div class="kpi grande"><small>' + nombrePeriodo + '</small><b>' + dinero(total) + '</b></div>' +
       '<div class="kpi"><small>Ventas</small><b>' + ventas.length + '</b></div>' +
       '<div class="kpi"><small>Promedio por venta</small><b>' + dinero(ventas.length ? total / ventas.length : 0) + '</b></div>' +
       '<div class="kpi"><small>Unidades</small><b>' + miles(uds) + '</b></div>' +
-      '<div class="kpi"><small>Productos distintos</small><b>' + new Set(filas.filter(function (f) { return f.k !== 'Otro cobro'; }).map(function (f) { return f.p; })).size + '</b></div>';
+      '<div class="kpi"><small>Productos distintos</small><b>' + new Set(filas.filter(function (f) { return !esAjuste(f); }).map(function (f) { return f.p; })).size + '</b></div>';
     Array.prototype.forEach.call(document.querySelectorAll('.per'), function (b) {
       b.classList.toggle('on', b.getAttribute('data-p') === rep.periodo);
     });
@@ -1243,13 +1272,15 @@
       clave = $('#clave-v').value;
       try { sessionStorage.setItem('clave', clave); } catch (e) { /* sin almacenamiento */ }
     }
+    if (desc.m > brutoVenta()) { $('#error-venta').textContent = 'El descuento es mayor que el total. Corrígelo.'; return; }
     var btn = $('#registrar');
     registrando = true; btn.disabled = true; btn.textContent = 'Registrando…';
     $('#error-venta').textContent = '';
     var datos = { lineas: ls.map(function (l) { return { id: l.p.id, cantidad: l.q }; }) };
     if (extra.m > 0) datos.extra = { monto: extra.m, concepto: extra.t };
+    if (desc.m > 0) datos.descuento = { monto: desc.m, concepto: desc.t };
     llamar('registrarVenta', datos, clave).then(function (r) {
-      carrito = {}; extra = { m: 0, t: '' }; guardarCarrito(); $('#recibido').value = '';
+      carrito = {}; extra = { m: 0, t: '' }; desc = { m: 0, t: '' }; guardarCarrito(); $('#recibido').value = '';
       cerrarVenta(); pintar();
       var av = (r.avisos || []).join(' · ');
       aviso('Venta ' + r.numero + ' registrada · $' + miles(r.total) + (av ? ' · ' + av : ''), av ? 7000 : 2800);
